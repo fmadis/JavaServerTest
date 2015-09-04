@@ -4,6 +4,8 @@ import java.sql.Connection;
 import java.sql.PreparedStatement;
 import java.sql.ResultSet;
 import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
 
 public class Main {
 	static Connection cn;
@@ -16,9 +18,8 @@ public class Main {
 
 	public static void main(String[] args) {
 		Main.connect();
-		Main.query(1);
-		System.out.println("");
-		Main.query(1);
+		Main.selectQuery(1);
+		Main.insertQuery("testing", "MF", "testing@hot.ee", "12345678");
 	}
 	
 	public static void connect() {
@@ -29,12 +30,12 @@ public class Main {
 		}
 	}
 	
-	public static void query(int index) {
+	public static void selectQuery(int index) {
 		try {
-			stmt = cn.prepareStatement("SELECT `JavaDB`.`other_stuff`.`data`, `JavaDB`.`users`.`name`,`JavaDB`.`users`.`email` " +
-					"FROM `JavaDB`.`users` JOIN `JavaDB`.`other_stuff` " +
-					"ON `JavaDB`.`users`.`id` = `JavaDB`.`other_stuff`.`id`" +
-					"WHERE `JavaDB`.`users`.`id` = ?");
+			stmt = cn.prepareStatement(
+					"SELECT `other_stuff`.`data`, `users`.`name`,`users`.`email` FROM `users` " +
+					"JOIN `other_stuff` ON `users`.`id` = `other_stuff`.`id`" +
+					"WHERE .`users`.`id` = ?");
 			stmt.setInt(1, index);
 			data = stmt.executeQuery();
 			while (data.next()) {
@@ -53,11 +54,49 @@ public class Main {
 		}
 	}
 	
+	public static void insertQuery(String dt, String name, String email, String pw) {
+		try {
+			stmt = cn.prepareStatement("INSERT INTO `users` (`name`, `email`, `password`) VALUES (?, ?, ?)",
+					Statement.RETURN_GENERATED_KEYS);
+			stmt.setString(1, name);
+			stmt.setString(2, email);
+			stmt.setString(3, pw);
+			stmt.execute();
+			int id = Main.autoIncrement();
+			stmt = cn.prepareStatement("INSERT INTO `other_stuff` (`id`, `data`) VALUES (?, ?)");
+			stmt.setInt(1, id);
+			stmt.setString(2, dt);
+			stmt.execute();
+			if (data != null) {
+				data.close();
+			}
+			if (stmt != null) {
+				stmt.close();
+			}
+		} catch (Exception e) {
+			System.err.println("Database query failed: " + e.getMessage());
+		}
+	}
+	
 	public static void disconnect() {
 		try {
 			cn.close();
 		} catch (Exception e) {
 			System.err.println("Database close failed: " + e.getMessage());
+		}
+	}
+	
+	private static int autoIncrement() {
+		try {
+			ResultSet dt = stmt.getGeneratedKeys();
+		    if (dt.next()) {
+		        return dt.getInt(1);
+		    } else {
+		    	return -1;
+		    }
+		} catch (SQLException e) {
+			System.err.println(e.getMessage());
+			return -1;
 		}
 	}
 
